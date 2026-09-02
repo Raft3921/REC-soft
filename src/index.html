@@ -1,0 +1,19 @@
+<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>REC soft</title><link rel="stylesheet" href="styles.css"></head>
+<body><main>
+  <header><div><span class="logo-dot"></span><strong>REC soft</strong></div><span id="updateBadge" class="badge">最新版を確認中</span></header>
+  <section class="hero"><p class="eyebrow">LIGHTWEIGHT SCREEN RECORDER</p><h1>押すだけ、きれいに録画。</h1><p>画面と音声を60fpsでMKVへ。配信機能を省いた録画専用設計です。</p></section>
+  <section class="panel">
+    <div class="field-row"><label><span>録画する画面</span><select id="source"></select></label><button id="refresh" class="secondary">再読込</button></div>
+    <div id="preview" class="preview"><span>画面を選択してください</span></div>
+    <div class="grid">
+      <label><span>フレームレート</span><select id="fps"><option value="60" selected>60 fps</option><option value="30">30 fps</option></select></label>
+      <label><span>画質</span><select id="quality"><option value="18000000">高画質</option><option value="12000000" selected>標準</option><option value="7000000">軽量</option></select></label>
+      <label class="toggle"><input id="systemAudio" type="checkbox" checked><span>PCの音声</span></label>
+      <label class="toggle"><input id="micAudio" type="checkbox" checked><span>マイク</span></label>
+    </div>
+    <div class="folder-row"><div><span>保存先</span><strong id="folder">ビデオ フォルダー</strong></div><button id="chooseFolder" class="secondary">変更</button></div>
+    <div id="status" class="status">準備完了</div>
+    <button id="record" class="record"><span></span><b>録画を開始</b></button>
+    <button id="openResult" class="secondary full" hidden>保存したファイルを表示</button>
+  </section><footer>録画中はこのウィンドウを最小化できます</footer>
+</main><script src="renderer.js"></script></body></html>
