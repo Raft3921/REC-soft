@@ -17,10 +17,13 @@ function createWindow() {
   });
   win.loadFile(path.join(__dirname, 'index.html'));
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    let response = {};
     try {
       const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
-      callback({ video: sources.find((source) => source.id === recording?.sourceId) || sources[0], audio: process.platform === 'win32' ? 'loopback' : undefined });
-    } catch (error) { callback({}); send('recording-error', error.message); }
+      const selected = sources.find((source) => source.id === recording?.sourceId) || sources[0];
+      if (selected) response = { video: selected, audio: process.platform === 'win32' ? 'loopback' : undefined };
+    } catch (error) { send('recording-error', error.message); }
+    callback(response);
   }, { useSystemPicker: false });
 }
 
