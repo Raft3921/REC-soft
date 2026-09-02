@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('recAPI', {
+  platform: process.platform,
   getSources: () => ipcRenderer.invoke('get-sources'),
   chooseFolder: () => ipcRenderer.invoke('choose-folder'),
   beginRecording: (options) => ipcRenderer.invoke('begin-recording', options),

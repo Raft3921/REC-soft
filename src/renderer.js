@@ -6,7 +6,7 @@ const status = (text,error=false) => { $('status').textContent=text; $('status')
 async function loadSources(){
   $('refresh').disabled=true;
   try { state.sources=await window.recAPI.getSources(); $('source').replaceChildren(...state.sources.map(x=>Object.assign(document.createElement('option'),{value:x.id,textContent:x.name}))); updatePreview(); }
-  catch(error){status(navigator.platform.includes('Mac')?'macOSの「システム設定 → プライバシーとセキュリティ → 画面収録」で許可すると画面一覧を確認できます。':`画面一覧を取得できません: ${error.message}`,true)}
+  catch(error){status(navigator.platform.includes('Mac')?error.message:`画面一覧を取得できません: ${error.message}`,true)}
   $('refresh').disabled=false;
 }
 function updatePreview(){ const x=state.sources.find(x=>x.id===$('source').value); $('preview').replaceChildren(); if(x){const img=document.createElement('img');img.alt=x.name;img.src=x.thumbnail;$('preview').append(img)}else $('preview').textContent='画面が見つかりません'; }
@@ -41,4 +41,8 @@ async function stopRecording(){
 }
 $('record').addEventListener('click',()=>state.recording?stopRecording():startRecording());$('source').addEventListener('change',updatePreview);$('refresh').addEventListener('click',loadSources);
 $('chooseFolder').addEventListener('click',async()=>{const folder=await window.recAPI.chooseFolder();if(folder){state.outputDir=folder;$('folder').textContent=folder}});$('openResult').addEventListener('click',()=>window.recAPI.showInFolder(state.resultPath));
-window.recAPI.onError(message=>status(message,true));window.recAPI.onUpdate(update=>{const badge=$('updateBadge');if(update.state==='available'){badge.textContent=`v${update.version} へ更新`;badge.onclick=()=>window.recAPI.downloadUpdate()}else if(update.state==='downloading')badge.textContent=`更新を取得中 ${update.percent}%`;else if(update.state==='ready'){badge.textContent='クリックして再起動・更新';badge.onclick=()=>window.recAPI.installUpdate()}else if(update.state==='current')badge.textContent='最新版です';else if(update.state==='error')badge.textContent='更新確認に失敗'});loadSources();
+window.recAPI.onError(message=>status(message,true));window.recAPI.onUpdate(update=>{const badge=$('updateBadge');if(update.state==='available'){badge.textContent=`v${update.version} へ更新`;badge.onclick=()=>window.recAPI.downloadUpdate()}else if(update.state==='downloading')badge.textContent=`更新を取得中 ${update.percent}%`;else if(update.state==='ready'){badge.textContent='クリックして再起動・更新';badge.onclick=()=>window.recAPI.installUpdate()}else if(update.state==='current')badge.textContent='最新版です';else if(update.state==='error')badge.textContent='更新確認に失敗'});
+if(window.recAPI.platform==='darwin'){
+  const option=document.createElement('option');option.value='mac-system-picker';option.textContent='録画開始時にMacの画面選択を開く';$('source').replaceChildren(option);
+  $('refresh').hidden=true;$('preview').innerHTML='<span>録画開始を押すと、Mac標準の画面選択が開きます</span>';status('準備完了・同じ画面収録許可を繰り返し要求しません');
+}else loadSources();

@@ -7,6 +7,7 @@ const { spawn } = require('child_process');
 let win;
 let recording = null;
 let blockerId = null;
+let sourceCache = new Map();
 const send = (channel, value) => win && !win.isDestroyed() && win.webContents.send(channel, value);
 
 function createWindow() {
@@ -19,12 +20,16 @@ function createWindow() {
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
     let response = {};
     try {
-      const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
-      const selected = sources.find((source) => source.id === recording?.sourceId) || sources[0];
+      let selected = sourceCache.get(recording?.sourceId);
+      if (!selected && sourceCache.size === 0) {
+        const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
+        sourceCache = new Map(sources.map((source) => [source.id, source]));
+        selected = sources[0];
+      }
       if (selected) response = { video: selected, audio: ['win32', 'darwin'].includes(process.platform) ? 'loopback' : undefined };
     } catch (error) { send('recording-error', error.message); }
     callback(response);
-  }, { useSystemPicker: false });
+  }, { useSystemPicker: process.platform === 'darwin' });
 }
 
 function ffmpegPath() {
@@ -42,6 +47,7 @@ function uniquePath(directory, extension) {
 
 ipcMain.handle('get-sources', async () => {
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
+  sourceCache = new Map(sources.map((source) => [source.id, source]));
   return sources.map((source) => ({ id: source.id, name: source.name, thumbnail: source.thumbnail.toDataURL() }));
 });
 ipcMain.handle('choose-folder', async () => {

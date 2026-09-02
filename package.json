@@ -1,6 +1,6 @@
 {
   "name": "rec-soft",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "軽量なWindows 11向け画面録画ソフト",
   "main": "src/main.js",
   "author": "Raft3921",
@@ -21,12 +21,13 @@
     "files": ["src/**/*", "package.json", "node_modules/ffmpeg-static/**/*"],
     "directories": { "output": "dist" },
     "publish": [{ "provider": "github", "owner": "Raft3921", "repo": "REC-soft" }],
-    "win": { "target": ["nsis", "portable"] },
+    "win": { "target": ["nsis", "portable"], "icon": "assets/icon.ico" },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "REC soft", "artifactName": "REC-soft-Setup-${version}-${arch}.${ext}" },
     "portable": { "artifactName": "REC-soft-Portable-${version}-${arch}.${ext}" },
     "mac": {
       "target": ["dmg", "zip"],
       "category": "public.app-category.video",
+      "icon": "assets/icon.icns",
       "artifactName": "REC-soft-${version}-${arch}.${ext}",
       "extendInfo": {
         "NSScreenCaptureUsageDescription": "画面またはウィンドウを動画として録画するために使用します。",
