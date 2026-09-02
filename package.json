@@ -1,6 +1,6 @@
 {
   "name": "rec-soft",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "軽量なWindows 11向け画面録画ソフト",
   "main": "src/main.js",
   "author": "Raft3921",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js",
-    "dist:win": "electron-builder --win nsis portable",
+    "dist:win": "electron-builder --win nsis portable --publish never",
     "dist:mac": "electron-builder --mac dir"
   },
   "dependencies": { "electron-updater": "^6.6.2", "ffmpeg-static": "^5.2.0" },
@@ -21,8 +21,9 @@
     "files": ["src/**/*", "package.json", "node_modules/ffmpeg-static/**/*"],
     "directories": { "output": "dist" },
     "publish": [{ "provider": "github", "owner": "Raft3921", "repo": "REC-soft" }],
-    "win": { "target": ["nsis", "portable"], "artifactName": "REC-soft-${version}-${arch}.${ext}" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "REC soft" },
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "REC soft", "artifactName": "REC-soft-Setup-${version}-${arch}.${ext}" },
+    "portable": { "artifactName": "REC-soft-Portable-${version}-${arch}.${ext}" },
     "mac": { "target": "dir", "category": "public.app-category.video" }
   }
 }
