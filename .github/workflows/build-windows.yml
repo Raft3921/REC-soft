@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build REC soft
 on:
   workflow_dispatch:
   push:
@@ -6,7 +6,7 @@ on:
 permissions:
   contents: write
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,18 +15,37 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run dist:win
-        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
       - uses: actions/upload-artifact@v4
         with:
-          name: REC-soft-Windows
+          name: windows
           path: |
             dist/*.exe
             dist/latest.yml
-      - name: Publish tagged release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run check
+      - run: npm run dist:mac
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
+      - uses: actions/upload-artifact@v4
         with:
-          files: |
-            dist/*.exe
-            dist/latest.yml
+          name: mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/latest-mac.yml
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: release, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
           generate_release_notes: true

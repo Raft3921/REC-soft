@@ -1,6 +1,6 @@
 # REC soft
 
-Windows 11向けの、録画だけに絞った軽量スクリーンレコーダーです。
+Windows 11／macOS 13以降向けの、録画だけに絞った軽量スクリーンレコーダーです。
 
 - 60fpsが標準（30fpsも選択可能）
 - 画面全体またはウィンドウを選択
@@ -9,13 +9,13 @@ Windows 11向けの、録画だけに絞った軽量スクリーンレコーダ�
 - 停止時にMKVへ無劣化格納
 - GitHub Releasesから起動時に更新確認
 
-## Windows版を入手
+## アプリを入手
 
-[Releases](https://github.com/Raft3921/REC-soft/releases/latest) からEXEをダウンロードしてください。
+[Releases](https://github.com/Raft3921/REC-soft/releases/latest) から、WindowsはEXE、MacはCPUに合うDMGをダウンロードしてください。
 
 ## ローカル起動
 
 - Windows: `Windowsで起動.bat` をダブルクリック
 - macOS（UI・基本動作の確認用）: `Macで確認.command` をダブルクリック
 
-macOSではWindowsの「PC音声ループバック」は利用できないため、最終確認はWindows 11で行ってください。
+Mac版の初回起動では、システム設定に表示される「画面収録」「システムオーディオ録音」「マイク」を許可してください。画面収録を初めて許可したあとはアプリを再起動します。

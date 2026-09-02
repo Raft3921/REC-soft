@@ -21,7 +21,7 @@ function createWindow() {
     try {
       const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
       const selected = sources.find((source) => source.id === recording?.sourceId) || sources[0];
-      if (selected) response = { video: selected, audio: process.platform === 'win32' ? 'loopback' : undefined };
+      if (selected) response = { video: selected, audio: ['win32', 'darwin'].includes(process.platform) ? 'loopback' : undefined };
     } catch (error) { send('recording-error', error.message); }
     callback(response);
   }, { useSystemPicker: false });
@@ -90,7 +90,7 @@ ipcMain.handle('cancel-recording', async () => {
 ipcMain.handle('show-in-folder', (_event, filePath) => shell.showItemInFolder(filePath));
 
 function configureUpdater() {
-  if (!app.isPackaged || process.platform !== 'win32') return;
+  if (!app.isPackaged || !['win32', 'darwin'].includes(process.platform)) return;
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('update-available', (info) => send('update-status', { state: 'available', version: info.version }));
