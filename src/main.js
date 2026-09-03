@@ -94,6 +94,38 @@ ipcMain.handle('cancel-recording', async () => {
   fs.rmSync(current.tempPath, { force: true });
 });
 ipcMain.handle('show-in-folder', (_event, filePath) => shell.showItemInFolder(filePath));
+ipcMain.handle('ask-convert-mov', async (_event, mkvPath) => {
+  const result = await dialog.showMessageBox(win, {
+    type: 'question',
+    title: 'MOVへ変換',
+    message: 'MOVに変換しますか？',
+    detail: `編集ソフトで扱いやすいH.264・AACのMOVを作成します。元のMKVは残ります。\n\n${path.basename(mkvPath)}`,
+    buttons: ['MOVに変換', 'MKVのまま'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true
+  });
+  return result.response === 0;
+});
+ipcMain.handle('convert-to-mov', async (_event, mkvPath) => {
+  if (!mkvPath || path.extname(mkvPath).toLowerCase() !== '.mkv' || !fs.existsSync(mkvPath)) {
+    throw new Error('変換するMKVファイルが見つかりません');
+  }
+  const directory = path.dirname(mkvPath);
+  const base = path.basename(mkvPath, path.extname(mkvPath));
+  let movPath = path.join(directory, `${base}.mov`);
+  let index = 2;
+  while (fs.existsSync(movPath)) movPath = path.join(directory, `${base}-${index++}.mov`);
+  await new Promise((resolve, reject) => {
+    const args = ['-y', '-i', mkvPath, '-map', '0:v:0', '-map', '0:a?', '-fps_mode', 'vfr', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', movPath];
+    const process = spawn(ffmpegPath(), args, { windowsHide: true });
+    let errorText = '';
+    process.stderr.on('data', (data) => { errorText += data.toString(); });
+    process.on('error', reject);
+    process.on('close', (code) => code === 0 ? resolve() : reject(new Error(`MOV変換に失敗しました (${code})\n${errorText.slice(-1200)}`)));
+  });
+  return { path: movPath, bytes: fs.statSync(movPath).size };
+});
 
 function configureUpdater() {
   if (!app.isPackaged || !['win32', 'darwin'].includes(process.platform)) return;

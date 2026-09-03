@@ -36,7 +36,15 @@ async function startRecording(){
 }
 async function stopRecording(){
   $('record').disabled=true;clearInterval(state.timer);status('MKVを安全に保存しています…');
-  try{await new Promise(resolve=>{state.recorder.addEventListener('stop',resolve,{once:true});state.recorder.stop()});await state.chunkQueue;const result=await window.recAPI.finishRecording();state.resultPath=result.path;status(`保存しました：${result.path}`);$('openResult').hidden=false}
+  try{
+    await new Promise(resolve=>{state.recorder.addEventListener('stop',resolve,{once:true});state.recorder.stop()});
+    await state.chunkQueue;
+    const result=await window.recAPI.finishRecording();state.resultPath=result.path;status(`MKVを保存しました：${result.path}`);$('openResult').hidden=false;
+    if(await window.recAPI.askConvertMov(result.path)){
+      status('MOVに変換しています… 録画時間によって数分かかります');
+      const converted=await window.recAPI.convertToMov(result.path);state.resultPath=converted.path;status(`MOVを保存しました：${converted.path}`);
+    }
+  }
   catch(error){status(`保存に失敗しました: ${error.message}`,true)}cleanup();$('record').disabled=false;
 }
 $('record').addEventListener('click',()=>state.recording?stopRecording():startRecording());$('source').addEventListener('change',updatePreview);$('refresh').addEventListener('click',loadSources);

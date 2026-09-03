@@ -1,6 +1,6 @@
 {
   "name": "rec-soft",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "軽量なWindows 11向け画面録画ソフト",
   "main": "src/main.js",
   "author": "Raft3921",

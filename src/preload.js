@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('recAPI', {
   finishRecording: () => ipcRenderer.invoke('finish-recording'),
   cancelRecording: () => ipcRenderer.invoke('cancel-recording'),
   showInFolder: (filePath) => ipcRenderer.invoke('show-in-folder', filePath),
+  askConvertMov: (filePath) => ipcRenderer.invoke('ask-convert-mov', filePath),
+  convertToMov: (filePath) => ipcRenderer.invoke('convert-to-mov', filePath),
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   onUpdate: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
