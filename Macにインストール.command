@@ -15,8 +15,13 @@ else
 fi
 app_path="dist/mac-arm64/REC soft.app"
 [[ "$(uname -m)" == "x86_64" ]] && app_path="dist/mac/REC soft.app"
+if [[ -e "/Applications/REC soft.app" ]]; then
+  old_app="/Users/$USER/.Trash/REC soft old $(date '+%Y-%m-%d %H-%M-%S').app"
+  mv "/Applications/REC soft.app" "$old_app"
+fi
 ditto "$app_path" "/Applications/REC soft.app"
 xattr -dr com.apple.quarantine "/Applications/REC soft.app"
+codesign --verify --deep --strict "/Applications/REC soft.app"
 open "/Applications/REC soft.app"
 echo "REC softをアプリケーションにインストールしました。"
 read "reply?カーを押すと終了します: "

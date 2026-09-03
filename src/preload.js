@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('recAPI', {
   platform: process.platform,
   getSources: () => ipcRenderer.invoke('get-sources'),
+  getSettings: () => ipcRenderer.invoke('get-settings'),
   chooseFolder: () => ipcRenderer.invoke('choose-folder'),
   beginRecording: (options) => ipcRenderer.invoke('begin-recording', options),
   writeChunk: (arrayBuffer) => ipcRenderer.send('recording-chunk', arrayBuffer),
@@ -13,5 +14,6 @@ contextBridge.exposeInMainWorld('recAPI', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   onUpdate: (callback) => ipcRenderer.on('update-status', (_event, value) => callback(value)),
+  onRecovery: (callback) => ipcRenderer.on('recovery-result', (_event, value) => callback(value)),
   onError: (callback) => ipcRenderer.on('recording-error', (_event, value) => callback(value))
 });

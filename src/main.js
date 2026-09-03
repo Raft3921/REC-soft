@@ -4,17 +4,29 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
+app.enableSandbox();
+
 let win;
 let recording = null;
 let blockerId = null;
 let sourceCache = new Map();
 const send = (channel, value) => win && !win.isDestroyed() && win.webContents.send(channel, value);
+const isTrusted = (event) => event.sender === win?.webContents && event.senderFrame?.url.startsWith('file:');
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 980, height: 700, minWidth: 780, minHeight: 600,
+    width: 900, height: 760, minWidth: 760, minHeight: 680, show: false, autoHideMenuBar: true,
     backgroundColor: '#090b10', titleBarStyle: 'hiddenInset',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false }
+  });
+  win.setMenu(null);
+  win.once('ready-to-show', () => win.show());
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (event) => event.preventDefault());
+  win.on('close', (event) => {
+    if (!recording) return;
+    event.preventDefault();
+    dialog.showMessageBox(win, { type: 'warning', title: '録画中です', message: '録画を停止して保存してから終了してください。', buttons: ['録画に戻る'] });
   });
   win.loadFile(path.join(__dirname, 'index.html'));
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
@@ -45,29 +57,87 @@ function uniquePath(directory, extension) {
   return candidate;
 }
 
+function settingsPath() { return path.join(app.getPath('userData'), 'settings.json'); }
+function readSettings() {
+  try {
+    const value = JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+    return typeof value.outputDir === 'string' && path.isAbsolute(value.outputDir) ? value : {};
+  } catch { return {}; }
+}
+function saveSettings(value) {
+  const target = settingsPath();
+  const temporary = `${target}.tmp`;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, target);
+}
+
+async function recoverInterruptedRecording() {
+  const directory = path.join(app.getPath('userData'), 'Recovery');
+  if (!fs.existsSync(directory)) return;
+  const files = fs.readdirSync(directory).filter((name) => name.endsWith('.webm.part')).sort().reverse();
+  if (!files.length) return;
+  const answer = await dialog.showMessageBox(win, {
+    type: 'warning', title: '未完了の録画を検出', message: '前回の録画を復旧しますか？',
+    detail: '異常終了前までの映像をMKVとして復旧します。元データは成功するまで保持されます。',
+    buttons: ['録画を復旧', 'あとで'], defaultId: 0, cancelId: 1, noLink: true
+  });
+  if (answer.response !== 0) return;
+  const input = path.join(directory, files[0]);
+  const output = uniquePath(app.getPath('videos'), 'recovered.mkv');
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(ffmpegPath(), ['-y', '-i', input, '-map', '0', '-c', 'copy', output], { windowsHide: true });
+      let errorText = '';
+      child.stderr.on('data', (data) => { errorText += data.toString(); });
+      child.on('error', reject);
+      child.on('close', (code) => code === 0 ? resolve() : reject(new Error(errorText.slice(-700))));
+    });
+    fs.rmSync(input, { force: true });
+    send('recovery-result', { ok: true, path: output });
+  } catch (error) {
+    send('recovery-result', { ok: false, message: error.message });
+  }
+}
+
 ipcMain.handle('get-sources', async () => {
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
   sourceCache = new Map(sources.map((source) => [source.id, source]));
   return sources.map((source) => ({ id: source.id, name: source.name, thumbnail: source.thumbnail.toDataURL() }));
 });
-ipcMain.handle('choose-folder', async () => {
+ipcMain.handle('get-settings', (event) => {
+  if (!isTrusted(event)) throw new Error('許可されていない操作です');
+  const saved = readSettings().outputDir;
+  return { outputDir: saved && fs.existsSync(saved) ? saved : app.getPath('videos') };
+});
+ipcMain.handle('choose-folder', async (event) => {
+  if (!isTrusted(event)) throw new Error('許可されていない操作です');
   const result = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] });
-  return result.canceled ? null : result.filePaths[0];
+  if (result.canceled) return null;
+  const outputDir = result.filePaths[0];
+  saveSettings({ outputDir });
+  return outputDir;
 });
 ipcMain.handle('begin-recording', async (_event, options) => {
+  if (!isTrusted(_event)) throw new Error('許可されていない操作です');
   if (recording) throw new Error('すでに録画中です');
   const outputDir = options.outputDir || app.getPath('videos');
+  if (typeof outputDir !== 'string' || !path.isAbsolute(outputDir)) throw new Error('保存先が正しくありません');
   fs.mkdirSync(outputDir, { recursive: true });
-  const tempPath = uniquePath(app.getPath('temp'), 'webm.part');
-  recording = { sourceId: options.sourceId, tempPath, finalPath: uniquePath(outputDir, 'mkv'), stream: fs.createWriteStream(tempPath) };
+  const recoveryDir = path.join(app.getPath('userData'), 'Recovery');
+  fs.mkdirSync(recoveryDir, { recursive: true });
+  const tempPath = uniquePath(recoveryDir, 'webm.part');
+  recording = { sourceId: options.sourceId, tempPath, finalPath: uniquePath(outputDir, 'mkv'), stream: fs.createWriteStream(tempPath, { highWaterMark: 8 * 1024 * 1024 }) };
+  recording.stream.on('error', (error) => send('recording-error', `保存先への書き込みに失敗しました: ${error.message}`));
   blockerId = powerSaveBlocker.start('prevent-display-sleep');
   return { finalPath: recording.finalPath };
 });
 ipcMain.on('recording-chunk', (event, arrayBuffer) => {
-  if (!recording) return;
+  if (!isTrusted(event) || !recording || !(arrayBuffer instanceof ArrayBuffer)) return;
   if (!recording.stream.write(Buffer.from(arrayBuffer))) event.sender.send('recording-backpressure', true);
 });
-ipcMain.handle('finish-recording', async () => {
+ipcMain.handle('finish-recording', async (event) => {
+  if (!isTrusted(event)) throw new Error('許可されていない操作です');
   if (!recording) throw new Error('録画されていません');
   const current = recording;
   recording = null;
@@ -84,7 +154,8 @@ ipcMain.handle('finish-recording', async () => {
   fs.rmSync(current.tempPath, { force: true });
   return { path: current.finalPath, bytes: fs.statSync(current.finalPath).size };
 });
-ipcMain.handle('cancel-recording', async () => {
+ipcMain.handle('cancel-recording', async (event) => {
+  if (!isTrusted(event)) throw new Error('許可されていない操作です');
   if (!recording) return;
   const current = recording;
   recording = null;
@@ -93,8 +164,13 @@ ipcMain.handle('cancel-recording', async () => {
   await new Promise((resolve) => current.stream.end(resolve));
   fs.rmSync(current.tempPath, { force: true });
 });
-ipcMain.handle('show-in-folder', (_event, filePath) => shell.showItemInFolder(filePath));
+ipcMain.handle('show-in-folder', (event, filePath) => {
+  if (!isTrusted(event) || typeof filePath !== 'string' || !['.mkv', '.mov'].includes(path.extname(filePath).toLowerCase()) || !fs.existsSync(filePath)) return false;
+  shell.showItemInFolder(filePath);
+  return true;
+});
 ipcMain.handle('ask-convert-mov', async (_event, mkvPath) => {
+  if (!isTrusted(_event)) throw new Error('許可されていない操作です');
   const result = await dialog.showMessageBox(win, {
     type: 'question',
     title: 'MOVへ変換',
@@ -108,6 +184,7 @@ ipcMain.handle('ask-convert-mov', async (_event, mkvPath) => {
   return result.response === 0;
 });
 ipcMain.handle('convert-to-mov', async (_event, mkvPath) => {
+  if (!isTrusted(_event)) throw new Error('許可されていない操作です');
   if (!mkvPath || path.extname(mkvPath).toLowerCase() !== '.mkv' || !fs.existsSync(mkvPath)) {
     throw new Error('変換するMKVファイルが見つかりません');
   }
@@ -140,6 +217,6 @@ function configureUpdater() {
 }
 ipcMain.handle('download-update', () => autoUpdater.downloadUpdate());
 ipcMain.handle('install-update', () => autoUpdater.quitAndInstall(false, true));
-app.whenReady().then(() => { createWindow(); configureUpdater(); });
+app.whenReady().then(() => { createWindow(); configureUpdater(); setTimeout(recoverInterruptedRecording, 1200); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

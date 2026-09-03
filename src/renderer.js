@@ -19,6 +19,7 @@ async function startRecording(){
   try{
     await window.recAPI.beginRecording({sourceId:$('source').value,outputDir:state.outputDir});
     const screen=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:Number($('fps').value),max:Number($('fps').value)}},audio:$('systemAudio').checked});
+    screen.getVideoTracks()[0].contentHint='motion';
     state.streams.push(screen);
     const context=new AudioContext({sampleRate:48000});state.audioContext=context;const destination=context.createMediaStreamDestination();
     if($('systemAudio').checked&&screen.getAudioTracks().length)context.createMediaStreamSource(new MediaStream(screen.getAudioTracks())).connect(destination);
@@ -29,7 +30,7 @@ async function startRecording(){
     state.chunkQueue=Promise.resolve();
     state.recorder.ondataavailable=({data})=>{if(data.size)state.chunkQueue=state.chunkQueue.then(()=>data.arrayBuffer()).then(buffer=>window.recAPI.writeChunk(buffer))};
     screen.getVideoTracks()[0].addEventListener('ended',()=>state.recording&&stopRecording());
-    state.recorder.start(1000);state.recording=true;state.startedAt=Date.now();state.timer=setInterval(()=>status(`● 録画中  ${duration(Date.now()-state.startedAt)}  /  ${$('fps').value} fps`),250);
+    state.recorder.start(2000);state.recording=true;state.startedAt=Date.now();state.timer=setInterval(()=>status(`● 録画中  ${duration(Date.now()-state.startedAt)}  /  ${$('fps').value} fps`),500);
     $('record').classList.add('active');$('record').querySelector('b').textContent='録画を停止して保存';lock(true);
   }catch(error){await window.recAPI.cancelRecording().catch(()=>{});cleanup();status(`録画を開始できません: ${error.message}`,true)}
   $('record').disabled=false;
@@ -50,7 +51,13 @@ async function stopRecording(){
 $('record').addEventListener('click',()=>state.recording?stopRecording():startRecording());$('source').addEventListener('change',updatePreview);$('refresh').addEventListener('click',loadSources);
 $('chooseFolder').addEventListener('click',async()=>{const folder=await window.recAPI.chooseFolder();if(folder){state.outputDir=folder;$('folder').textContent=folder}});$('openResult').addEventListener('click',()=>window.recAPI.showInFolder(state.resultPath));
 window.recAPI.onError(message=>status(message,true));window.recAPI.onUpdate(update=>{const badge=$('updateBadge');if(update.state==='available'){badge.textContent=`v${update.version} へ更新`;badge.onclick=()=>window.recAPI.downloadUpdate()}else if(update.state==='downloading')badge.textContent=`更新を取得中 ${update.percent}%`;else if(update.state==='ready'){badge.textContent='クリックして再起動・更新';badge.onclick=()=>window.recAPI.installUpdate()}else if(update.state==='current')badge.textContent='最新版です';else if(update.state==='error')badge.textContent='更新確認に失敗'});
-if(window.recAPI.platform==='darwin'){
-  const option=document.createElement('option');option.value='mac-system-picker';option.textContent='録画開始時にMacの画面選択を開く';$('source').replaceChildren(option);
-  $('refresh').hidden=true;$('preview').innerHTML='<span>録画開始を押すと、Mac標準の画面選択が開きます</span>';status('準備完了・同じ画面収録許可を繰り返し要求しません');
-}else loadSources();
+window.recAPI.onRecovery(result=>{if(result.ok){state.resultPath=result.path;$('openResult').hidden=false;status(`前回の録画を復旧しました：${result.path}`)}else status(`録画を復旧できませんでした：${result.message}`,true)});
+async function initialize(){
+  try{const settings=await window.recAPI.getSettings();state.outputDir=settings.outputDir;$('folder').textContent=settings.outputDir}
+  catch(error){status(`設定を読み込めません: ${error.message}`,true)}
+  if(window.recAPI.platform==='darwin'){
+    const option=document.createElement('option');option.value='mac-system-picker';option.textContent='録画開始時に選択';$('source').replaceChildren(option);
+    $('refresh').hidden=true;$('preview').innerHTML='<span>録画開始時に画面を選択</span>';
+  }else await loadSources();
+}
+initialize();
