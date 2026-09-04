@@ -61,10 +61,6 @@ async function startRecording(){
     const primary=selected?.kind==='capture'
       ?await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:selected.deviceId},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:fps,max:fps}},audio:$('systemAudio').checked?{...(selected.audioId?{deviceId:{exact:selected.audioId}}:{}),echoCancellation:false,noiseSuppression:false,autoGainControl:false}:false})
       :await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor',frameRate:{ideal:fps,max:fps}},audio:$('systemAudio').checked});
-    const displaySurface=primary.getVideoTracks()[0].getSettings().displaySurface;
-    if(selected?.kind==='screen'&&displaySurface&&displaySurface!=='monitor'){
-      primary.getTracks().forEach(track=>track.stop());throw new Error('画面全体を選択してください');
-    }
     primary.getVideoTracks()[0].contentHint='motion';
     state.streams.push(primary);
     const context=new AudioContext({sampleRate:48000});state.audioContext=context;const destination=context.createMediaStreamDestination();
