@@ -5,7 +5,7 @@ const status = (text,error=false) => { $('status').textContent=text; $('status')
 
 async function loadSources(){
   $('refresh').disabled=true;
-  try { state.sources=await window.recAPI.getSources(); $('source').replaceChildren(...state.sources.map(x=>Object.assign(document.createElement('option'),{value:x.id,textContent:x.name}))); updatePreview(); }
+  try { state.sources=(await window.recAPI.getSources()).map(source=>({...source,kind:'screen'})); $('source').replaceChildren(...state.sources.map(x=>Object.assign(document.createElement('option'),{value:x.id,textContent:x.name}))); updatePreview(); }
   catch(error){status(navigator.platform.includes('Mac')?error.message:`画面一覧を取得できません: ${error.message}`,true)}
   $('refresh').disabled=false;
 }
@@ -15,7 +15,7 @@ async function loadMacSources(){
     const devices=await navigator.mediaDevices.enumerateDevices();
     const videoInputs=devices.filter(device=>device.kind==='videoinput');
     const audioInputs=devices.filter(device=>device.kind==='audioinput');
-    state.sources=[{id:'mac-system-picker',name:'Macの画面',kind:'screen'},...videoInputs.map((device,index)=>({
+    state.sources=[{id:'mac-system-picker',name:'Macの画面全体',kind:'screen'},...videoInputs.map((device,index)=>({
       id:`capture:${device.deviceId}`,name:device.label||`外部映像 ${index+1}`,kind:'capture',deviceId:device.deviceId,
       audioId:audioInputs.find(audio=>audio.groupId&&audio.groupId===device.groupId)?.deviceId||''
     }))];
@@ -60,7 +60,11 @@ async function startRecording(){
     const fps=Number($('fps').value);
     const primary=selected?.kind==='capture'
       ?await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:selected.deviceId},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:fps,max:fps}},audio:$('systemAudio').checked?{...(selected.audioId?{deviceId:{exact:selected.audioId}}:{}),echoCancellation:false,noiseSuppression:false,autoGainControl:false}:false})
-      :await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:fps,max:fps}},audio:$('systemAudio').checked});
+      :await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor',frameRate:{ideal:fps,max:fps}},audio:$('systemAudio').checked});
+    const displaySurface=primary.getVideoTracks()[0].getSettings().displaySurface;
+    if(selected?.kind==='screen'&&displaySurface&&displaySurface!=='monitor'){
+      primary.getTracks().forEach(track=>track.stop());throw new Error('画面全体を選択してください');
+    }
     primary.getVideoTracks()[0].contentHint='motion';
     state.streams.push(primary);
     const context=new AudioContext({sampleRate:48000});state.audioContext=context;const destination=context.createMediaStreamDestination();

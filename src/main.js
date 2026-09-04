@@ -34,7 +34,7 @@ function createWindow() {
     try {
       let selected = sourceCache.get(recording?.sourceId);
       if (!selected && sourceCache.size === 0) {
-        const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } });
+        const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
         sourceCache = new Map(sources.map((source) => [source.id, source]));
         selected = sources[0];
       }
@@ -101,7 +101,7 @@ async function recoverInterruptedRecording() {
 }
 
 ipcMain.handle('get-sources', async () => {
-  const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
+  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 320, height: 180 } });
   sourceCache = new Map(sources.map((source) => [source.id, source]));
   return sources.map((source) => ({ id: source.id, name: source.name, thumbnail: source.thumbnail.toDataURL() }));
 });
