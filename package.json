@@ -1,6 +1,6 @@
 {
   "name": "rec-soft",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "軽量なWindows 11向け画面録画ソフト",
   "main": "src/main.js",
   "author": "Raft3921",
@@ -74,6 +74,7 @@
       "icon": "assets/icon.icns",
       "artifactName": "REC-soft-${version}-${arch}.${ext}",
       "extendInfo": {
+        "NSCameraUsageDescription": "USBキャプチャーボードなどの映像を録画するために使用します。",
         "NSScreenCaptureUsageDescription": "画面またはウィンドウを動画として録画するために使用します。",
         "NSAudioCaptureUsageDescription": "Macで再生されている音声を録画するために使用します。",
         "NSMicrophoneUsageDescription": "マイク音声を動画に録音するために使用します。"

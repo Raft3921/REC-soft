@@ -16,7 +16,7 @@ button{cursor:pointer;border:0}
 .secondary{min-height:42px;padding:0 14px;color:#d9dce3;background:#1c2027;border:1px solid #333945;border-radius:9px}
 .secondary:hover{background:#252a33}
 .preview{margin:13px 0;height:170px;display:grid;place-items:center;overflow:hidden;border-radius:11px;background:#07080b;border:1px solid #232731;color:#697180}
-.preview img{width:100%;height:100%;object-fit:contain}
+.preview img,.preview video{width:100%;height:100%;object-fit:contain}
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:end}
 .toggle{min-height:42px;padding:9px 10px;display:flex;gap:8px;align-items:center;border-radius:9px;border:1px solid #303540;background:#191c22}
 .toggle span{margin:0;color:#e5e7ec}

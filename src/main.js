@@ -1,4 +1,4 @@
-const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, session, shell, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, session, shell, powerSaveBlocker, systemPreferences } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
@@ -104,6 +104,13 @@ ipcMain.handle('get-sources', async () => {
   const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
   sourceCache = new Map(sources.map((source) => [source.id, source]));
   return sources.map((source) => ({ id: source.id, name: source.name, thumbnail: source.thumbnail.toDataURL() }));
+});
+ipcMain.handle('ensure-capture-access', async (event) => {
+  if (!isTrusted(event) || process.platform !== 'darwin') return false;
+  for (const kind of ['camera', 'microphone']) {
+    if (systemPreferences.getMediaAccessStatus(kind) === 'not-determined') await systemPreferences.askForMediaAccess(kind);
+  }
+  return systemPreferences.getMediaAccessStatus('camera') === 'granted';
 });
 ipcMain.handle('get-settings', (event) => {
   if (!isTrusted(event)) throw new Error('許可されていない操作です');
